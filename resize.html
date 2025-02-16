@@ -7,9 +7,10 @@
     <style>
         body {
             color: #9A5DB6;
+            font-family: Arial, sans-serif;
+            text-align: center;
         }
         .upload-container {
-            text-align: center;
             margin-top: 50px;
         }
         .upload-box {
@@ -45,28 +46,38 @@
             border: 1px solid #9A5DB6;
             color: #9A5DB6;
         }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
         button {
             background-color: transparent;
             border: 2px solid #9A5DB6;
             color: #9A5DB6;
             padding: 10px 20px;
-            margin: 10px;
             cursor: pointer;
             transition: background-color 0.3s ease, color 0.3s ease;
+            border-radius: 20px;
         }
         button:hover {
             background-color: #9A5DB6;
             color: white;
+        }
+        #status {
+            margin-top: 10px;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
     <div class="upload-container">
         <h1>Image Resize</h1>
-        <div class="upload-box" onclick="document.getElementById('file-input').click()">
+        <div class="upload-box" id="upload-box">
             <p id="upload-text">Select Or Drag & Drop Images Here</p>
             <img id="preview-image" alt="Preview">
-            <input type="file" id="file-input" style="display:none;" accept="image/*" onchange="previewImage()">
+            <input type="file" id="file-input" style="display:none;" accept="image/*">
         </div>
         <div class="dimensions">
             <label for="width">Width:</label>
@@ -75,24 +86,119 @@
             <label for="height">Height:</label>
             <input type="number" id="height" placeholder="320" value="320"> px
         </div>
-        <button onclick="resizeImage()">Resize</button>
-        <button onclick="uploadImage()">Upload</button>
+        <div class="button-container">
+            <button onclick="resizeImage()">Resize</button>
+            <button onclick="uploadImage()">Upload</button>
+        </div>
+        <p id="status"></p>
     </div>
 
     <script>
-        function previewImage() {
-            const fileInput = document.getElementById('file-input');
-            const previewImage = document.getElementById('preview-image');
-            const uploadText = document.getElementById('upload-text');
+        const API_GATEWAY_URL = "YOUR_API_GATEWAY_URL"; // Replace with your actual API Gateway URL
+        const uploadBox = document.getElementById("upload-box");
+        const fileInput = document.getElementById("file-input");
+        const previewImage = document.getElementById("preview-image");
+        const uploadText = document.getElementById("upload-text");
+        const statusText = document.getElementById("status");
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
+
+        uploadBox.addEventListener("click", () => fileInput.click());
+
+        uploadBox.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            uploadBox.style.border = "2px solid #7A3D9A";
+        });
+
+        uploadBox.addEventListener("dragleave", () => {
+            uploadBox.style.border = "2px dashed #9A5DB6";
+        });
+
+        uploadBox.addEventListener("drop", (event) => {
+            event.preventDefault();
+            uploadBox.style.border = "2px dashed #9A5DB6";
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                previewImageFile();
+            }
+        });
+
+        fileInput.addEventListener("change", previewImageFile);
+
+        function previewImageFile() {
+            if (!fileInput.files.length) return;
             
-            if (fileInput.files && fileInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    previewImage.src = e.target.result;
-                    previewImage.style.display = 'block';
-                    uploadText.style.display = 'none';
-                };
-                reader.readAsDataURL(fileInput.files[0]);
+            const file = fileInput.files[0];
+
+            if (file.size > MAX_FILE_SIZE) {
+                alert("File is too large. Max size is 10MB.");
+                fileInput.value = "";
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImage.src = e.target.result;
+                previewImage.style.display = "block";
+                uploadText.style.display = "none";
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resizeImage() {
+            const width = document.getElementById("width").value;
+            const height = document.getElementById("height").value;
+            if (!previewImage.src) {
+                alert("Please select an image first.");
+                return;
+            }
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = width;
+            canvas.height = height;
+            const img = new Image();
+            img.src = previewImage.src;
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, width, height);
+                previewImage.src = canvas.toDataURL("image/png");
+            };
+        }
+
+        async function uploadImage() {
+            if (!fileInput.files.length) {
+                alert("Please select a file.");
+                return;
+            }
+            
+            statusText.textContent = "Requesting upload URL...";
+
+            try {
+                const response = await fetch(API_GATEWAY_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        itemName: fileInput.files[0].name,
+                        contentType: fileInput.files[0].type,
+                        size: fileInput.files[0].size
+                    })
+                });
+
+                if (!response.ok) throw new Error("Failed to get pre-signed URL");
+                const { uploadUrl } = await response.json();
+
+                statusText.textContent = "Uploading to S3...";
+                const s3Response = await fetch(uploadUrl, {
+                    method: "PUT",
+                    body: fileInput.files[0],
+                    headers: { "Content-Type": fileInput.files[0].type }
+                });
+
+                if (!s3Response.ok) throw new Error("Upload failed");
+                statusText.textContent = "Upload successful!";
+                alert("File uploaded successfully!");
+            } catch (error) {
+                statusText.textContent = "Error: " + error.message;
+                alert("Upload failed!");
             }
         }
     </script>
