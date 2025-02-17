@@ -87,7 +87,6 @@
             <input type="number" id="height" placeholder="320" value="320"> px
         </div>
         <div class="button-container">
-            <button onclick="resizeImage()">Resize</button>
             <button onclick="uploadImage()">Upload</button>
         </div>
         <p id="status"></p>
@@ -127,7 +126,7 @@
 
         function previewImageFile() {
             if (!fileInput.files.length) return;
-            
+
             const file = fileInput.files[0];
 
             if (file.size > MAX_FILE_SIZE) {
@@ -145,60 +144,52 @@
             reader.readAsDataURL(file);
         }
 
-        function resizeImage() {
+        async function uploadImage() {
+            const file = document.getElementById("file-input").files[0];
+            if (!file) {
+                alert("Please select an image.");
+                return;
+            }
+
             const width = document.getElementById("width").value;
             const height = document.getElementById("height").value;
-            if (!previewImage.src) {
-                alert("Please select an image first.");
-                return;
-            }
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-            canvas.width = width;
-            canvas.height = height;
-            const img = new Image();
-            img.src = previewImage.src;
-            img.onload = function() {
-                ctx.drawImage(img, 0, 0, width, height);
-                previewImage.src = canvas.toDataURL("image/png");
-            };
-        }
 
-        async function uploadImage() {
-            if (!fileInput.files.length) {
-                alert("Please select a file.");
+            // Validate width and height (optional but recommended)
+            if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
+                alert("Please enter valid width and height values.");
                 return;
             }
-            
-            statusText.textContent = "Requesting upload URL...";
+
+            document.getElementById("status").textContent = "Requesting upload URL...";
 
             try {
                 const response = await fetch(API_GATEWAY_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        itemName: fileInput.files[0].name,
-                        contentType: fileInput.files[0].type,
-                        size: fileInput.files[0].size
+                        filename: file.name,
+                        contentType: file.type,
+                        width: width,  // Include width in the request
+                        height: height // Include height in the request
                     })
                 });
 
                 if (!response.ok) throw new Error("Failed to get pre-signed URL");
-                const { uploadUrl } = await response.json();
 
-                statusText.textContent = "Uploading to S3...";
-                const s3Response = await fetch(uploadUrl, {
+                const { uploadUrl } = await response.json();
+                document.getElementById("status").textContent = "Uploading image...";
+
+                await fetch(uploadUrl, {
                     method: "PUT",
-                    body: fileInput.files[0],
-                    headers: { "Content-Type": fileInput.files[0].type }
+                    body: file,
+                    headers: { "Content-Type": file.type }
                 });
 
-                if (!s3Response.ok) throw new Error("Upload failed");
-                statusText.textContent = "Upload successful!";
-                alert("File uploaded successfully!");
+                document.getElementById("status").textContent = "Image uploaded successfully!";
+                // ... any further actions after successful upload
             } catch (error) {
-                statusText.textContent = "Error: " + error.message;
-                alert("Upload failed!");
+                document.getElementById("status").textContent = "Upload failed.";
+                console.error(error);
             }
         }
     </script>

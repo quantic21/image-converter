@@ -84,13 +84,12 @@
             <img id="image-preview" src="" alt="" style="display: none;">
             <input type="file" id="imageInput" accept="image/*" required>
         </div>
-        <button onclick="uploadImage()">Upload Image</button>
         <select id="formatSelect" required>
             <option value="png">PNG</option>
             <option value="webp">WEBP</option>
             <option value="jpg">JPEG</option>
         </select>
-        <button onclick="convertImage()">Convert</button>
+        <button onclick="uploadImage()">Upload Image</button>
         <p id="status"></p>
     </div>
 
@@ -126,13 +125,19 @@
                 return;
             }
 
+            const format = document.getElementById("formatSelect").value;
+
             document.getElementById("status").textContent = "Requesting upload URL...";
 
             try {
                 const response = await fetch(API_GATEWAY_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ filename: file.name, contentType: file.type })
+                    body: JSON.stringify({ 
+                        filename: file.name, 
+                        contentType: file.type,
+                        format: format 
+                    })
                 });
 
                 if (!response.ok) throw new Error("Failed to get pre-signed URL");
