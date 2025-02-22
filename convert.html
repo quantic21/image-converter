@@ -119,35 +119,38 @@
         }
 
         async function uploadImage() {
-        const fileInput = document.getElementById("imageInput");
-        const file = fileInput.files[0];
-        if (!file) {
+    const fileInput = document.getElementById("imageInput");
+    const file = fileInput.files[0];
+    if (!file) {
         alert("Please select an image.");
         return;
-        }
+    }
 
     const format = document.getElementById("formatSelect").value;
 
     document.getElementById("status").textContent = "Requesting upload URL...";
 
     try {
-        const response = await fetch(API_GATEWAY_URL, 
-        {
+        const response = await fetch(API_GATEWAY_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ 
                 fileName: file.name, 
-                fileSize: file.size,  // Send file size
-                contentType: file.type, // Include Content-Type
+                fileSize: file.size,  
+                contentType: file.type, 
                 format: format
             })
         });
-        
-        const textResponse = await response.text();  // Read as text for debugging
-    console.log("Raw API Response:", textResponse);
 
-    try {
-        const responseData = JSON.parse(textResponse);  // Try to parse as JSON
+        const jsonResponse = await response.json(); // Parse top-level JSON
+        console.log("Raw API Response:", jsonResponse);
+
+        if (!jsonResponse.body) {
+            console.error("API response does not contain 'body':", jsonResponse);
+            return;
+        }
+
+        const responseData = JSON.parse(jsonResponse.body); // Parse inner JSON
         console.log("Parsed API Response:", responseData);
 
         if (!responseData.presignedUrl) {
@@ -167,22 +170,18 @@
 
         if (uploadResponse.ok) {
             console.log("✅ Upload successful!");
+            document.getElementById("status").textContent = "Image uploaded successfully!";
         } else {
             console.error("❌ Upload failed:", uploadResponse.status, uploadResponse.statusText);
+            document.getElementById("status").textContent = "Upload failed.";
         }
     } 
     catch (err) {
-        console.error("❌ Error parsing API response as JSON:", err);
-    }
-
-        document.getElementById("status").textContent = "Image uploaded successfully!";
-
-        // Now you can process the image using another Lambda function if needed
-    } catch (error) {
+        console.error("❌ Error processing API response:", err);
         document.getElementById("status").textContent = "Upload failed.";
-        console.error(error);
-    }
+    }
 }
+
 
     </script>
 </body>
