@@ -119,7 +119,8 @@
         }
 
         async function uploadImage() {
-    const file = document.getElementById("imageInput").files[0];
+    const fileInput = document.getElementById("imageInput");
+    const file = fileInput.files[0];
     if (!file) {
         alert("Please select an image.");
         return;
@@ -136,23 +137,26 @@
             body: JSON.stringify({ 
                 fileName: file.name, 
                 fileSize: file.size,  // Send file size
-                contentType: file.type,  // Send content type
+                contentType: file.type, // Include Content-Type
                 format: format
             })
         });
 
         if (!response.ok) throw new Error("Failed to get pre-signed URL");
 
-        const { uploadUrl } = await response.json();
+        const { presignedUrl, s3Key } = await response.json();
         document.getElementById("status").textContent = "Uploading image...";
 
-        await fetch(uploadUrl, {
+        // Upload file directly to S3 using pre-signed URL
+        await fetch(presignedUrl, {
             method: "PUT",
             body: file,
-            headers: { "Content-Type": file.type }
+            headers: { "Content-Type": file.type } // Ensure content type matches
         });
 
         document.getElementById("status").textContent = "Image uploaded successfully!";
+
+        // Now you can process the image using another Lambda function if needed
     } catch (error) {
         document.getElementById("status").textContent = "Upload failed.";
         console.error(error);
