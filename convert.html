@@ -119,44 +119,46 @@
         }
 
         async function uploadImage() {
-            const file = document.getElementById("imageInput").files[0];
-            if (!file) {
-                alert("Please select an image.");
-                return;
-            }
+    const file = document.getElementById("imageInput").files[0];
+    if (!file) {
+        alert("Please select an image.");
+        return;
+    }
 
-            const format = document.getElementById("formatSelect").value;
+    const format = document.getElementById("formatSelect").value;
 
-            document.getElementById("status").textContent = "Requesting upload URL...";
+    document.getElementById("status").textContent = "Requesting upload URL...";
 
-            try {
-                const response = await fetch(API_GATEWAY_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ 
-                        fileName: file.name, 
-                        contentType: file.type,
-                        format: format 
-                    })
-                });
+    try {
+        const response = await fetch(API_GATEWAY_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                fileName: file.name, 
+                fileSize: file.size,  // Send file size
+                contentType: file.type,  // Send content type
+                format: format
+            })
+        });
 
-                if (!response.ok) throw new Error("Failed to get pre-signed URL");
+        if (!response.ok) throw new Error("Failed to get pre-signed URL");
 
-                const { uploadUrl } = await response.json();
-                document.getElementById("status").textContent = "Uploading image...";
+        const { uploadUrl } = await response.json();
+        document.getElementById("status").textContent = "Uploading image...";
 
-                await fetch(uploadUrl, {
-                    method: "PUT",
-                    body: file,
-                    headers: { "Content-Type": file.type }
-                });
+        await fetch(uploadUrl, {
+            method: "PUT",
+            body: file,
+            headers: { "Content-Type": file.type }
+        });
 
-                document.getElementById("status").textContent = "Image uploaded successfully!";
-            } catch (error) {
-                document.getElementById("status").textContent = "Upload failed.";
-                console.error(error);
-            }
-        }
+        document.getElementById("status").textContent = "Image uploaded successfully!";
+    } catch (error) {
+        document.getElementById("status").textContent = "Upload failed.";
+        console.error(error);
+    }
+}
+
     </script>
 </body>
 </html>
