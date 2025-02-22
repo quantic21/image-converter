@@ -20,7 +20,6 @@
             width: 300px;
             height: 200px;
             cursor: pointer;
-            transition: border 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -39,13 +38,6 @@
         .dimensions {
             margin-top: 20px;
         }
-        .dimensions input {
-            width: 100px;
-            margin: 5px;
-            padding: 5px;
-            border: 1px solid #9A5DB6;
-            color: #9A5DB6;
-        }
         .button-container {
             display: flex;
             justify-content: center;
@@ -58,7 +50,6 @@
             color: #9A5DB6;
             padding: 10px 20px;
             cursor: pointer;
-            transition: background-color 0.3s ease, color 0.3s ease;
             border-radius: 20px;
         }
         button:hover {
@@ -81,10 +72,10 @@
         </div>
         <div class="dimensions">
             <label for="width">Width:</label>
-            <input type="number" id="width" placeholder="320" value="320"> px
+            <input type="number" id="width" value="320"> px
             <br>
             <label for="height">Height:</label>
-            <input type="number" id="height" placeholder="320" value="320"> px
+            <input type="number" id="height" value="320"> px
         </div>
         <div class="button-container">
             <button onclick="uploadImage()">Upload</button>
@@ -94,99 +85,82 @@
 
     <script>
         const API_GATEWAY_URL = "https://17vqrak0vj.execute-api.ap-northeast-1.amazonaws.com/prod/upload"; 
-        const uploadBox = document.getElementById("upload-box");
-        const fileInput = document.getElementById("file-input");
-        const previewImage = document.getElementById("preview-image");
-        const uploadText = document.getElementById("upload-text");
-        const statusText = document.getElementById("status");
-        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
-
-        uploadBox.addEventListener("click", () => fileInput.click());
-
-        uploadBox.addEventListener("dragover", (event) => {
-            event.preventDefault();
-            uploadBox.style.border = "2px solid #7A3D9A";
+        
+        document.getElementById("upload-box").addEventListener("click", function () {
+            document.getElementById("file-input").click();
         });
 
-        uploadBox.addEventListener("dragleave", () => {
-            uploadBox.style.border = "2px dashed #9A5DB6";
-        });
-
-        uploadBox.addEventListener("drop", (event) => {
-            event.preventDefault();
-            uploadBox.style.border = "2px dashed #9A5DB6";
-            const files = event.dataTransfer.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                previewImageFile();
+        document.getElementById("file-input").addEventListener("change", function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.getElementById("preview-image");
+                    img.src = e.target.result;
+                    img.style.display = "block";
+                    document.getElementById("upload-text").style.display = "none";
+                };
+                reader.readAsDataURL(file);
             }
         });
-
-        fileInput.addEventListener("change", previewImageFile);
-
-        function previewImageFile() {
-            if (!fileInput.files.length) return;
-
-            const file = fileInput.files[0];
-
-            if (file.size > MAX_FILE_SIZE) {
-                alert("File is too large. Max size is 10MB.");
-                fileInput.value = "";
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImage.src = e.target.result;
-                previewImage.style.display = "block";
-                uploadText.style.display = "none";
-            };
-            reader.readAsDataURL(file);
-        }
 
         async function uploadImage() {
-            const file = document.getElementById("file-input").files[0];
+            const fileInput = document.getElementById("file-input");
+            const file = fileInput.files[0];
             if (!file) {
                 alert("Please select an image.");
                 return;
             }
-
+            
             const width = document.getElementById("width").value;
             const height = document.getElementById("height").value;
-
-            // Validate width and height (optional but recommended)
             if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
                 alert("Please enter valid width and height values.");
                 return;
             }
-
+            
             document.getElementById("status").textContent = "Requesting upload URL...";
-
+            
             try {
                 const response = await fetch(API_GATEWAY_URL, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         fileName: file.name,
+                        fileSize: file.size,
                         contentType: file.type,
-                        width: width,  // Include width in the request
-                        height: height // Include height in the request
+                        width: width,
+                        height: height
                     })
                 });
-
-                if (!response.ok) throw new Error("Failed to get pre-signed URL");
-
-                const { uploadUrl } = await response.json();
+                
+                const jsonResponse = await response.json();
+                if (!jsonResponse.body) {
+                    console.error("API response does not contain 'body':", jsonResponse);
+                    return;
+                }
+                
+                const responseData = JSON.parse(jsonResponse.body);
+                if (!responseData.presignedUrl) {
+                    console.error("Pre-signed URL missing from response!", responseData);
+                    return;
+                }
+                
+                const presignedUrl = responseData.presignedUrl;
                 document.getElementById("status").textContent = "Uploading image...";
-
-                await fetch(uploadUrl, {
+                
+                const uploadResponse = await fetch(presignedUrl, {
                     method: "PUT",
                     body: file,
                     headers: { "Content-Type": file.type }
                 });
-
-                document.getElementById("status").textContent = "Image uploaded successfully!";
-                // ... any further actions after successful upload
+                
+                if (uploadResponse.ok) {
+                    document.getElementById("status").textContent = "Image uploaded successfully!";
+                } else {
+                    console.error("Upload failed:", uploadResponse.status, uploadResponse.statusText);
+                    document.getElementById("status").textContent = "Upload failed.";
+                }
             } catch (error) {
                 document.getElementById("status").textContent = "Upload failed.";
                 console.error(error);
