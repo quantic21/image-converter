@@ -104,7 +104,8 @@
             }
         });
 
-        async function uploadImage() {
+        async function uploadImage() 
+        {
             const fileInput = document.getElementById("file-input");
             const file = fileInput.files[0];
             if (!file) {
@@ -134,36 +135,43 @@
                     })
                 });
                 
-                const jsonResponse = await response.json();
-                if (!jsonResponse.body) {
-                    console.error("API response does not contain 'body':", jsonResponse);
-                    return;
-                }
-                
-                const responseData = JSON.parse(jsonResponse.body);
-                if (!responseData.presignedUrl) {
-                    console.error("Pre-signed URL missing from response!", responseData);
-                    return;
-                }
-                
-                const presignedUrl = responseData.presignedUrl;
-                document.getElementById("status").textContent = "Uploading image...";
-                
-                const uploadResponse = await fetch(presignedUrl, {
-                    method: "PUT",
-                    body: file,
-                    headers: { "Content-Type": file.type }
-                });
-                
-                if (uploadResponse.ok) {
-                    document.getElementById("status").textContent = "Image uploaded successfully!";
-                } else {
-                    console.error("Upload failed:", uploadResponse.status, uploadResponse.statusText);
-                    document.getElementById("status").textContent = "Upload failed.";
-                }
-            } catch (error) {
-                document.getElementById("status").textContent = "Upload failed.";
-                console.error(error);
+                const jsonResponse = await response.json(); // Parse top-level JSON
+        console.log("Raw API Response:", jsonResponse);
+
+        if (!jsonResponse.body) {
+            console.error("API response does not contain 'body':", jsonResponse);
+            return;
+        }
+
+        const responseData = JSON.parse(jsonResponse.body); // Parse inner JSON
+        console.log("Parsed API Response:", responseData);
+
+        if (!responseData.presignedUrl) {
+            console.error("Pre-signed URL missing from response!", responseData);
+            return;
+        }
+
+        const presignedUrl = responseData.presignedUrl;
+        console.log("Extracted Pre-signed URL:", presignedUrl);
+
+        // Step 2: Upload the file to S3 using presigned URL
+        const uploadResponse = await fetch(presignedUrl, {
+            method: "PUT",
+            body: file,
+            headers: { "Content-Type": file.type }
+        });
+
+        if (uploadResponse.ok) {
+            console.log("✅ Upload successful!");
+            document.getElementById("status").textContent = "Image uploaded successfully!";
+        } else {
+            console.error("❌ Upload failed:", uploadResponse.status, uploadResponse.statusText);
+            document.getElementById("status").textContent = "Upload failed.";
+        }
+    } 
+    catch (err) {
+        console.error("❌ Error processing API response:", err);
+        document.getElementById("status").textContent = "Upload failed.";
             }
         }
     </script>
