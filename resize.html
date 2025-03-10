@@ -60,6 +60,23 @@
             margin-top: 10px;
             font-weight: bold;
         }
+        #result-container {
+            margin-top: 30px;
+            display: none;
+        }
+        #processed-image {
+            max-width: 400px;
+            max-height: 400px;
+            border: 2px solid #4599f8;
+            margin: 20px 0;
+        }
+        .download-btn {
+            background-color: #4599f8;
+            color: white;
+        }
+        .download-btn:hover {
+            background-color: #367ac5;
+        }
     </style>
 </head>
 <body>
@@ -81,11 +98,21 @@
             <button onclick="uploadImage()">Upload</button>
         </div>
         <p id="status"></p>
+        <div id="result-container">
+            <img id="processed-image" alt="Processed Image">
+            <div class="button-container">
+                <button class="download-btn" onclick="downloadImage()">Download Image</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        const API_GATEWAY_URL = "https://17vqrak0vj.execute-api.ap-northeast-1.amazonaws.com/prod/upload"; 
+        const API_GATEWAY_URL = "https://17vqrak0vj.execute-api.ap-northeast-1.amazonaws.com/prod/upload";
+        const CLOUDFRONT_URL = "https://d24tqwhqu0ov5p.cloudfront.net/processed/"; 
         
+        let currentFileName = '';
+        let processedImageUrl = '';
+
         document.getElementById("upload-box").addEventListener("click", function () {
             document.getElementById("file-input").click();
         });
@@ -104,8 +131,7 @@
             }
         });
 
-        async function uploadImage() 
-        {
+        async function uploadImage() {
             const fileInput = document.getElementById("file-input");
             const file = fileInput.files[0];
             if (!file) {
@@ -135,43 +161,76 @@
                     })
                 });
                 
-                const jsonResponse = await response.json(); // Parse top-level JSON
-        console.log("Raw API Response:", jsonResponse);
+                const jsonResponse = await response.json();
+                if (!jsonResponse.body) {
+                    console.error("API response does not contain 'body':", jsonResponse);
+                    return;
+                }
 
-        if (!jsonResponse.body) {
-            console.error("API response does not contain 'body':", jsonResponse);
-            return;
+                const responseData = JSON.parse(jsonResponse.body);
+                if (!responseData.presignedUrl) {
+                    console.error("Pre-signed URL missing from response!", responseData);
+                    return;
+                }
+
+                const presignedUrl = responseData.presignedUrl;
+
+                // Upload to S3
+                const uploadResponse = await fetch(presignedUrl, {
+                    method: "PUT",
+                    body: file,
+                    headers: { "Content-Type": file.type }
+                });
+
+                if (uploadResponse.ok) {
+                    document.getElementById("status").textContent = "Image uploaded successfully!";
+                    currentFileName = file.name;
+                    processedImageUrl = `${CLOUDFRONT_URL}/${currentFileName}`;
+                    
+                    // Display processed image
+                    const processedImg = document.getElementById("processed-image");
+                    processedImg.src = processedImageUrl;
+                    document.getElementById("result-container").style.display = "block";
+                    
+                    // Handle image loading status
+                    processedImg.onerror = () => {
+                        document.getElementById("status").textContent = "Processed image not available yet";
+                        processedImg.style.display = "none";
+                    };
+                    processedImg.onload = () => {
+                        document.getElementById("status").textContent = "Processed image ready!";
+                        processedImg.style.display = "block";
+                    };
+                } else {
+                    document.getElementById("status").textContent = "Upload failed.";
+                }
+            } catch (err) {
+                console.error("Error:", err);
+                document.getElementById("status").textContent = "Upload failed.";
+            }
         }
 
-        const responseData = JSON.parse(jsonResponse.body); // Parse inner JSON
-        console.log("Parsed API Response:", responseData);
+        async function downloadImage() {
+            if (!processedImageUrl) {
+                alert("No image to download");
+                return;
+            }
 
-        if (!responseData.presignedUrl) {
-            console.error("Pre-signed URL missing from response!", responseData);
-            return;
-        }
-
-        const presignedUrl = responseData.presignedUrl;
-        console.log("Extracted Pre-signed URL:", presignedUrl);
-
-        // Step 2: Upload the file to S3 using presigned URL
-        const uploadResponse = await fetch(presignedUrl, {
-            method: "PUT",
-            body: file,
-            headers: { "Content-Type": file.type }
-        });
-
-        if (uploadResponse.ok) {
-            console.log("✅ Upload successful!");
-            document.getElementById("status").textContent = "Image uploaded successfully!";
-        } else {
-            console.error("❌ Upload failed:", uploadResponse.status, uploadResponse.statusText);
-            document.getElementById("status").textContent = "Upload failed.";
-        }
-    } 
-    catch (err) {
-        console.error("❌ Error processing API response:", err);
-        document.getElementById("status").textContent = "Upload failed.";
+            try {
+                const response = await fetch(processedImageUrl);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `resized-${currentFileName}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                document.getElementById("status").textContent = "Download started!";
+            } catch (error) {
+                console.error("Download failed:", error);
+                document.getElementById("status").textContent = "Download failed";
             }
         }
     </script>
