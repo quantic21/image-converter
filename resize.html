@@ -108,7 +108,7 @@
 
     <script>
         const API_GATEWAY_URL = "https://17vqrak0vj.execute-api.ap-northeast-1.amazonaws.com/prod/upload";
-        const CLOUDFRONT_URL = "https://d24tqwhqu0ov5p.cloudfront.net/processed/"; 
+        const CLOUDFRONT_URL = "https://d24tqwhqu0ov5p.cloudfront.net"; 
         
         let currentFileName = '';
         let processedImageUrl = '';
@@ -185,7 +185,9 @@
                 if (uploadResponse.ok) {
                     document.getElementById("status").textContent = "Image uploaded successfully!";
                     currentFileName = file.name;
-                    processedImageUrl = `${CLOUDFRONT_URL}/${currentFileName}`;
+                    const fileExtension = currentFileName.split('.').pop();
+                    const newFileName = `${width}x${height}.${fileExtension}`;
+                    processedImageUrl = `${CLOUDFRONT_URL}/${newFileName}`;
                     
                     // Display processed image
                     const processedImg = document.getElementById("processed-image");
