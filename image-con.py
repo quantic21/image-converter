@@ -58,7 +58,7 @@ def lambda_handler(event, context):
 
             # Generate new filename
             base_name = os.path.splitext(object_key)[0].split("/")[-1]  # Remove directory path
-            new_filename = f"converted/{base_name}.{target_format.lower()}" 
+            new_filename = f"{base_name}.{target_format.lower()}" 
 
             # Upload converted image to output bucket
             content_type = f"image/{target_format.lower()}" if target_format.lower() != "jpeg" else "image/jpeg"
