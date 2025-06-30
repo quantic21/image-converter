@@ -4,74 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image Converter</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            color: #4599f8;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            flex-direction: column;
-        }
-        .container {
-            text-align: center;
-            background-color: #fff;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 100%;
-        }
-        .upload-box {
-            border: 2px dashed #4599f8;
-            padding: 20px;
-            cursor: pointer;
-            transition: border 0.3s ease;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 150px;
-        }
-        .upload-box:hover {
-            border: 2px solid #4599f8;
-        }
-        .upload-box img {
-            max-width: 100%;
-            max-height: 150px;
-            border-radius: 5px;
-        }
-        input[type="file"] {
-            display: none;
-        }
-        select, button {
-            width: 80%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 25px;
-            border: 2px solid #4599f8;
-            font-size: 1rem;
-            text-align: center;
-            background-color: white;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #4599f8;
-            color: white;
-        }
-        #status {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-        #download-box {
-            display: none;
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="convert.css">
 </head>
 <body>
     <div class="container">
@@ -96,71 +29,6 @@
             </a>
         </div>
     </div>
-
-    <script>
-        const API_GATEWAY_URL = "https://17vqrak0vj.execute-api.ap-northeast-1.amazonaws.com/prod/upload";
-        const CLOUDFRONT_URL = "https://d24tqwhqu0ov5p.cloudfront.net/processed/";
-        const MAX_FILE_SIZE = 10 * 1024 * 1024;
-
-        document.getElementById("upload-box").addEventListener("click", () => document.getElementById("imageInput").click());
-        document.getElementById("imageInput").addEventListener("change", previewImage);
-
-        function previewImage() {
-            const file = document.getElementById("imageInput").files[0];
-            if (!file) return;
-            if (file.size > MAX_FILE_SIZE) {
-                alert("File is too large. Max size is 10MB.");
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                document.getElementById("image-preview").src = e.target.result;
-                document.getElementById("image-preview").style.display = "block";
-                document.getElementById("upload-text").style.display = "none";
-            };
-            reader.readAsDataURL(file);
-        }
-
-        async function uploadImage() {
-            const fileInput = document.getElementById("imageInput");
-            const file = fileInput.files[0];
-            if (!file) {
-                alert("Please select an image.");
-                return;
-            }
-            const format = document.getElementById("formatSelect").value;
-            document.getElementById("status").textContent = "Requesting upload URL...";
-            try {
-                const response = await fetch(API_GATEWAY_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ fileName: file.name, fileSize: file.size, contentType: file.type, format: format })
-                });
-                const jsonResponse = await response.json();
-                const responseData = jsonResponse.body ? JSON.parse(jsonResponse.body) : jsonResponse;
-                if (!responseData.presignedUrl) throw new Error("Pre-signed URL missing");
-                await fetch(responseData.presignedUrl, {
-                    method: "PUT",
-                    body: file,
-                    headers: { "Content-Type": file.type }
-                });
-                document.getElementById("status").textContent = "Image uploaded successfully! Fetching processed image...";
-                setTimeout(() => fetchProcessedImage(file.name, format), 5000);
-            } catch (err) {
-                console.error("Error:", err);
-                document.getElementById("status").textContent = "Upload failed.";
-            }
-        }
-
-        function fetchProcessedImage(fileName, format) {
-            const processedImageUrl = `${CLOUDFRONT_URL}${fileName}.${format}`;
-            document.getElementById("image-preview").src = processedImageUrl;
-            document.getElementById("processed-image").src = processedImageUrl;
-            document.getElementById("processed-image").style.display = "block";
-            document.getElementById("download-link").href = processedImageUrl;
-            document.getElementById("download-link").style.display = "block";
-            document.getElementById("download-box").style.display = "block";
-        }
-    </script>
+    <script src = "convert.js"></script>
 </body>
 </html>

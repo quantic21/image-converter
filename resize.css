@@ -1,0 +1,85 @@
+body {
+  color: #4599f8;
+  font-family: Arial, sans-serif;
+  text-align: center;
+}
+
+.upload-container {
+  margin-top: 50px;
+}
+
+.upload-box {
+  border: 2px dashed #4599f8;
+  padding: 20px;
+  margin: 20px auto;
+  width: 300px;
+  height: 200px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.upload-box:hover {
+  border: 2px solid #4599f8;
+}
+
+.upload-box img {
+  max-width: 100%;
+  max-height: 100%;
+  display: none;
+  position: absolute;
+}
+
+.dimensions {
+  margin-top: 20px;
+}
+
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+button {
+  background-color: transparent;
+  border: 2px solid #4599f8;
+  color: #4599f8;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 20px;
+}
+
+button:hover {
+  background-color: #4599f8;
+  color: white;
+}
+
+#status {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+#result-container {
+  margin-top: 30px;
+  display: none;
+}
+
+#processed-image {
+  max-width: 400px;
+  max-height: 400px;
+  border: 2px solid #4599f8;
+  margin: 20px 0;
+}
+
+.download-btn {
+  background-color: #4599f8;
+  color: white;
+}
+
+.download-btn:hover {
+  background-color: #367ac5;
+}
